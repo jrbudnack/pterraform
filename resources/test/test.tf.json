@@ -1,0 +1,88 @@
+{
+    "variable": {
+        "auth_url": {
+            "default": "http://10.15.2.2:5000"
+        },
+        "user_name": {
+            "default": "admin"
+        },
+        "password": {
+            "default": "ch1ck3nnu883t5"
+        },
+        "tenant_name": {
+            "default": "tf_test"
+        },
+        "instance_count": {
+            "default": 2
+        },
+        "extnet_uuid": {
+            "default": "7a044884-3563-46cc-888a-8feab998675b"
+        },
+        "extnet_name": {
+            "default": "extnet1"
+        }
+    },
+    "provider": {
+        "openstack": {
+            "auth_url": "http://10.15.2.2:5000/v2.0",
+            "user_name": "${var.user_name}",
+            "password": "${var.password}",
+            "tenant_name": "${var.tenant_name}"
+        }
+    },
+    "resource": {
+        "openstack_compute_instance_v2": {
+            "test-instance": {
+                "name": "instance-${count.index+1}",
+                "image_name": "cirros-0.3.2-x86_64",
+                "flavor_name": "m1.medium",
+                "security_groups": ["default"],
+                "count": "${var.instance_count}",
+                "network": {
+                        "uuid": "${openstack_networking_network_v2.int-net1.id}"
+                }            }
+        },
+        "openstack_networking_floatingip_v2": {
+            "fip": {
+                "pool": "${var.extnet_name}",
+                "count": "${var.instance_count}"
+            }
+        },
+        "openstack_networking_router_interface_v2": {
+            "extifc": {
+                "router_id": "${openstack_networking_router_v2.int2ext.id}",
+                "subnet_id": "${openstack_networking_subnet_v2.int-subnet1.id}"
+            }
+        },
+        "openstack_networking_router_v2": {
+            "int2ext": {
+                "name": "int2ext",
+                "admin_state_up": "true",
+                "external_gateway": "${var.extnet_uuid}",
+                "depends_on": ["openstack_networking_subnet_v2.int-subnet1"]
+            }
+        },
+        "openstack_networking_subnet_v2": {
+            "int-subnet1": {
+                "name": "int-subnet1",
+                "network_id": "${openstack_networking_network_v2.int-net1.id}",
+                "cidr": "10.0.40.0/24",
+                "ip_version": 4,
+                "enable_dhcp": "true",
+                "dns_nameservers": ["8.8.8.8", "8.8.4.4"],
+                "allocation_pools": [
+                    {
+                        "start": "10.0.40.50",
+                        "end": "10.0.40.250"
+                    }
+                ]
+            }
+        },
+        "openstack_networking_network_v2": {
+            "int-net1": {
+                "name": "int-net1",
+                "admin_state_up": true
+            }
+        }
+    }
+}
