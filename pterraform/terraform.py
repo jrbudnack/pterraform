@@ -1,7 +1,9 @@
+from datetime import datetime
 import uuid
 import shutil
 import os
 import json
+import subprocess
 from subprocess import check_output
 
 class Terraform(dict):
@@ -12,6 +14,7 @@ class Terraform(dict):
         self.src_manifest_path = os.path.join(".", self.filename)
         self.tmpdir = os.path.join(".", "." + self.object_id)
         self.manifestdir = os.path.join(self.tmpdir, manifest)
+        self.state = {}
         self.variables = self.parse_variables(variables)
 
         if not os.path.isfile(self.src_manifest_path):
@@ -45,14 +48,39 @@ class Terraform(dict):
     def apply(self):
         self.copy_tmp_manifest()
         self.generate_vars_file()
-        print check_output("terraform apply -input=false " + self.manifestdir, shell=True)
+        self.current_stats = {}
+        cmd = "terraform apply -input=false " + self.manifestdir
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1, shell=True)
+        self.parse_output(p)
+        p.stdout.close()
         self.remove_tmp_manifest()
 
     def destroy(self):
         self.copy_tmp_manifest()
         self.generate_vars_file()
-        print check_output("terraform destroy -input=false -force " + self.manifestdir, shell=True)
+        self.current_stats = {}
+        cmd = "terraform destroy -input=false -force " + self.manifestdir
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1, shell=True)
+        self.parse_output(p)
+        p.stdout.close()
         self.remove_tmp_manifest()
+
+    def parse_output(self, process):
+        start_times = {}
+        durations = {}
+        for line in iter(process.stdout.readline, b''):
+            if "Creating..." in line or "Destroying..." in line:
+                object_name = line.split(": ")[0]
+                start_times[object_name] = datetime.utcnow()
+                print line.strip() + ", starting at " + str(start_times[object_name]) + "\n"
+            elif "Creation complete" in line or "Destruction complete" in line:
+                object_name = line.split(": ")[0]
+                durations[object_name] = datetime.utcnow() - start_times[object_name]
+                print line.strip() + ", with duration " + str(durations[object_name]) + "\n"
+            else:
+                print line
+        self.state['start_times'] = start_times
+        self.state['durations'] = durations
 
     def parse_variables(self, variables={}):
         tf_vars = {'variable': {}}
