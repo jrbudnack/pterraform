@@ -15,12 +15,16 @@ class Terraform(dict):
         self.tmpdir = os.path.join(".", "." + self.object_id)
         self.manifestdir = os.path.join(self.tmpdir, manifest)
         self.variables = self.parse_variables(variables)
+        self.state_path = os.path.join(self.manifestdir, "terraform.tfstate")
 
         if not os.path.isfile(self.src_manifest_path):
             self.filename = self.filename + ".json"
             self.src_manifest_path = self.src_manifest_path + ".json"
-        if not os.path.isfile(self.src_manifest_path):
-            raise("Manifest file not found.  Must have a *.tf or *.tf.json file to feed to Terraform.")
+        self.copy_tmp_manifest()
+        self.generate_vars_file()
+
+    def cleanup(self):
+        self.remove_tmp_manifest()
 
     def copy_tmp_manifest(self):
         if os.path.isfile(self.src_manifest_path):
@@ -45,25 +49,19 @@ class Terraform(dict):
         print "Unimplemented."
 
     def apply(self):
-        self.copy_tmp_manifest()
-        self.generate_vars_file()
         self.current_stats = {}
-        cmd = "terraform apply -input=false " + self.manifestdir
+        cmd = "terraform apply -input=false -state=" + self.state_path  + " " + self.manifestdir
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1, shell=True)
         output = self.parse_output(p)
         p.stdout.close()
-        self.remove_tmp_manifest()
         return output
 
     def destroy(self):
-        self.copy_tmp_manifest()
-        self.generate_vars_file()
         self.current_stats = {}
-        cmd = "terraform destroy -input=false -force " + self.manifestdir
+        cmd = "terraform destroy -input=false -force -state=" + self.state_path  + " " + self.manifestdir
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1, shell=True)
         output = self.parse_output(p)
         p.stdout.close()
-        self.remove_tmp_manifest()
         return output
 
     def parse_output(self, process):
