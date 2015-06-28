@@ -46,7 +46,12 @@ class Terraform(dict):
             shutil.rmtree(self.tmpdir)
 
     def state(self):
-        print "Unimplemented."
+        retval = {}
+        if os.path.isfile(self.state_path):
+            with open(self.state_path, 'r') as state_file:
+                retval = json.load(state_file)
+            state_file.close()
+        return retval
 
     def apply(self):
         self.current_stats = {}
