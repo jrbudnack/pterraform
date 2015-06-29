@@ -7,34 +7,41 @@ import subprocess
 from subprocess import check_output
 
 class Terraform(dict):
-    def __init__(self, manifest, variables={}):
-        self.name = manifest
+    def __init__(self, source_manifest_path, variables=None):
+        self.name = os.path.basename(source_manifest_path).split(".")[0]
         self.object_id = str(uuid.uuid4())
-        self.filename = manifest + ".tf"
-        self.src_manifest_path = os.path.join(".", self.filename)
+        self.source_manifest_path = source_manifest_path
         self.tmpdir = os.path.join(".", "." + self.object_id)
-        self.manifestdir = os.path.join(self.tmpdir, manifest)
-        self.variables = self.parse_variables(variables)
+        self.manifestdir = os.path.join(self.tmpdir, self.name)
         self.state_path = os.path.join(self.manifestdir, "terraform.tfstate")
+        self.variables = self.parse_variables(variables)
 
-        if not os.path.isfile(self.src_manifest_path):
-            self.filename = self.filename + ".json"
-            self.src_manifest_path = self.src_manifest_path + ".json"
         self.copy_tmp_manifest()
         self.generate_vars_file()
 
     def cleanup(self):
         self.remove_tmp_manifest()
 
+    def is_a_terraform_file(self, f):
+        return (os.path.isfile(f) and (f.lower().endswith(".tf") or f.lower().endswith(".tf.json")))
+
     def copy_tmp_manifest(self):
-        if os.path.isfile(self.src_manifest_path):
+        if os.path.isdir(self.source_manifest_path):
+            files = [f for f in os.listdir(self.source_manifest_path) if self.is_a_terraform_file(os.path.join(self.source_manifest_path, f))]
+            if len(files) > 0:
+                if not os.path.isdir(self.tmpdir):
+                    os.mkdir(self.tmpdir)
+                shutil.copytree(self.source_manifest_path, os.path.join(self.tmpdir, self.name))
+            else:
+                raise(Exception("Terraform files not found.  Must have at least one *.tf or *.tf.json file to feed to Terraform."))
+        elif self.is_a_terraform_file(self.source_manifest_path):
             if not os.path.isdir(self.tmpdir):
                 os.mkdir(self.tmpdir)
             if not os.path.isdir(self.manifestdir):
                 os.mkdir(self.manifestdir)
-            shutil.copy(self.src_manifest_path, self.manifestdir)
+            shutil.copy(self.source_manifest_path, self.manifestdir)
         else:
-            raise("Manifest file not found.  Must have a *.tf or *.tf.json file to feed to Terraform.")
+            raise(Exception("Manifest file not found.  Must have a *.tf or *.tf.json file to feed to Terraform."))
 
     def generate_vars_file(self):
         with open(os.path.join(self.manifestdir, 'override.tf.json'), 'w') as vars_file:
@@ -87,9 +94,12 @@ class Terraform(dict):
                 print line
         return retval
 
-    def parse_variables(self, variables={}):
-        tf_vars = {'variable': {}}
-        for variable in variables:
-            tf_vars['variable'][variable] = {}
-            tf_vars['variable'][variable]['default'] = variables[variable]
-        return tf_vars
+    def parse_variables(self, variables):
+        if variables is not None:
+            tf_vars = {'variable': {}}
+            for variable in variables:
+                tf_vars['variable'][variable] = {}
+                tf_vars['variable'][variable]['default'] = variables[variable]
+            return tf_vars
+        else:
+            return None

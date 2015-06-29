@@ -5,7 +5,9 @@ I have a need to stand up many Openstack client infrastructures for testing, usi
 ## Usage
 Right now, I can take a terraform JSON definition file and use it to deploy a tenant with the infrastructure I want.  I also write an override.tf.json file, given a dict you provide, which will override any variables you put in the definition.
 
-An example of usage is as follows:
+You can point terraform to a single Terraform file, OR you can point it to the traditional Terraform folder, which contains the *.tf and *.tf.json files you wish to use.
+
+Here is an example of how to use it:
 ```
 import pterraform
 
@@ -18,7 +20,7 @@ variables = {
   "extnet_uuid": "703dd102-eee1-47da-b90a-345e98e6da5b",
   "extnet_name": "extnet1"
 }
-tfproject = Terraform("test", variables);
+tfproject = Terraform("test.tf.json", variables);
 tfproject.apply()
 tfproject.destroy()
 ```
