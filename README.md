@@ -1,7 +1,8 @@
 # Pterraform
 A Python wrapper for Terraform.
 ## Purpose
-I have a need to stand up many Openstack client infrastructures for testing, using some kind of definition to minimize the need to alter code.  Since my current testing framework is written in Python, I figured I would write a simple Python wrapper.  Right now this is a POC, but depending on how successful it is, we'll see how far this goes!
+This package allows you to programmatically invoke Terraform from Python.  At this point, we only do Apply and Destroy.  This library also parses the local terraform.tfstate file, so the state of your infrastructure can be used in your application (such as uuid's for objects and other properties).  Finally, pterraform parses the output to generate data on how long it takes for any given piece of the infrastructure to stand up.
+
 ## Usage
 Right now, I can take a terraform JSON definition file and use it to deploy a tenant with the infrastructure I want.  I also write an override.tf.json file, given a dict you provide, which will override any variables you put in the definition.
 
@@ -21,6 +22,14 @@ variables = {
   "extnet_name": "extnet1"
 }
 tfproject = Terraform("test.tf.json", variables);
-tfproject.apply()
+
+# Apply the terraform manifest and print the start times and durations.
+print tfproject.apply()
+
+# Print the current state after apply() is called.
+print tfproject.state()
+
 tfproject.destroy()
 ```
+
+
