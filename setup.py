@@ -3,13 +3,12 @@ from subprocess import call
 import os
 
 required = [
-        "python-keystoneclient==1.1.0",
 ]
 
 setup(name='pterraform',
-      version='0.1',
+      version='0.1.2',
       description='Terraform wrapper for Python',
-      url='',
+      url='https://github.com/jrbudnack/pterraform',
       author='Jeremy Budnack',
       packages=[
         'pterraform'
